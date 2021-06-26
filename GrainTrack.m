@@ -9,8 +9,8 @@ imwrite_dir = 'ProcessedImages/TrackedGrains_'; %
 poswrite_dir = 'Positions/';
 
 %Set and image numbers to consider
-startnum = 6200;  endnum = 22000;
-setnumber= 70; %can be range
+startnum = 1;  endnum = startnum; %22000;
+setnumber= 2; %can be range
 namesets = {'sample1','sample2'};
 shapesets = {'Pentagon','Circle'};
 
@@ -24,6 +24,8 @@ deltaT = 1/fps;
 
 %This warning is unnecessary, will turn back on at end
 warning('off','MATLAB:colon:nonIntegerIndex');
+
+filt = (fspecial('gaussian', 7,1));
 
 for index = setnumber
     
@@ -62,16 +64,16 @@ for index = setnumber
             numsides = 8;
             largepolythresh = 1070;
             smallpolythresh = 650;
+            showbars = true; %Find bars on disks to obtain rotations
     end
     
     %Load masks reprsenting the shapes of interest. A mask is binary.
-    load([shape 'Masks.mat']); %SEE maskproduction.m for sample code to make masks.
+    load(['ShapeMasks/' shape 'Masks.mat']); %SEE maskproduction.m for sample code to make masks.
     
     im_direc = dir([image_dir name_dir '/*.bmp']);
     
     for imindex = startnum:endnum
         
-        time_im_N = time_N(time_N(:,1)==str2num(im_direc_1(imindex).name(2:6)), 2);
         
         %******************************************************
         %******************************************************
@@ -81,8 +83,14 @@ for index = setnumber
         %***e.g., Sobel, may help with edge-edge contacts******
         %******************************************************
         %******************************************************
-        bin_n = imread([image_dir name_dir im_direc(imindex).name]);
+        bin_n = imread([image_dir name_dir '/' im_direc(imindex).name]);
         % ^ obtained by image pre-processing, which could happen above.
+        
+        %If disks (or other shapes) marked with bar, either process image and obtain
+        % binarized bar image, or import bar image from elsewhere (as done in this sample)
+        if shape(1) == 'C' && showbars
+            bars = imread(['ProcessedImages/ProcessedDiskImage_Bars.bmp']);
+        end
         
         final_n = int8(bin_n);
         final_n(final_n==0) = -1; %final_n is binarized image; -1 assigned to 0, int8.
@@ -191,7 +199,6 @@ for index = setnumber
                 [maxs,ymaxs] = max(test_xc2);
                 [testmax,xmax_orig] = max(maxs);
                 ymax_orig = ymaxs(xmax_orig);
-                allmax = [allmax;testmax];
                 ex = test_xc2(ymax_orig-center_l_disk+1:ymax_orig-center_l_disk+size_maskdisk_l,xmax_orig-center_l_disk+1:xmax_orig-center_l_disk+size_maskdisk_l,:);
                 
                 ex(ex<0) = 0;
@@ -365,7 +372,6 @@ for index = setnumber
                 [testmax,zmax] = max(maxs2);
                 xmax_orig = xmaxs(zmax);
                 ymax_orig = ymaxs(1,xmax_orig,zmax);
-                allmax3 = [allmax3;testmax];
                 
                 ex = test_xc2_poly(ymax_orig-center_s_poly+1:ymax_orig-center_s_poly+size_maskpoly_s,xmax_orig-center_s_poly+1:xmax_orig-center_s_poly+size_maskpoly_s,:);
                 ex(ex<0) = 0;
@@ -542,14 +548,12 @@ for index = setnumber
         %Next step uses insertShape to draw, requires Computer Vision toolbox.
         %could instead plot for the polygons, and viscircles for the disks, then print figure
         if numsides>0
-            if dispims || writeims
-                final_n_poly = insertShape(uint8(cat(3,bin_n,bin_n,bin_n))*255, 'FilledPolygon', vertices,'opacity',0.5,'color',repmat([255,0,0],[size(vertices,1),1]));
-                final_n_poly = insertShape(final_n_poly, 'FilledPolygon', vertices2,'opacity',0.5,'color',repmat([0,0,255],[size(vertices2,1),1]));
-            end
+            final_n_poly = insertShape(uint8(cat(3,bin_n,bin_n,bin_n))*255, 'FilledPolygon', vertices,'opacity',0.5,'color',repmat([255,0,0],[size(vertices,1),1]));
+            final_n_poly = insertShape(final_n_poly, 'FilledPolygon', vertices2,'opacity',0.5,'color',repmat([0,0,255],[size(vertices2,1),1]));
         elseif numsides==0
             %For disks, if bar drawn on surface, use bar to detect rotation
             
-            [Xmesh,Ymesh] = meshgrid(1:size(test_im_croppad,2),1:size(test_im_croppad,1));
+            [Xmesh,Ymesh] = meshgrid(1:size(bin_n,2),1:size(bin_n,1));
             r_s = size_small/2;
             r_l = size_large/2;
             if size(partcents_s,2)==2
@@ -563,9 +567,9 @@ for index = setnumber
                 topx = ceil(partcents_s(indsmall,1)+r_s);
                 topy = ceil(partcents_s(indsmall,2)+r_s);
                 if botx<1; botx = 1; end
-                if topx>size(test_im_croppad,2); topx = size(test_im_croppad,2); end
+                if topx>size(bin_n,2); topx = size(bin_n,2); end
                 if boty<1; boty = 1; end
-                if topy>size(test_im_croppad,1); topy = size(test_im_croppad,1); end
+                if topy>size(bin_n,1); topy = size(bin_n,1); end
                 locX = Xmesh(boty:topy,botx:topx);
                 locY = Ymesh(boty:topy,botx:topx);
                 R = zeros(size(locX));
@@ -603,9 +607,9 @@ for index = setnumber
                 topx = ceil(partcents_l(indlarge,1)+r_l);
                 topy = ceil(partcents_l(indlarge,2)+r_l);
                 if botx<1; botx = 1; end
-                if topx>size(test_im_croppad,2); topx = size(test_im_croppad,2); end
+                if topx>size(bin_n,2); topx = size(bin_n,2); end
                 if boty<1; boty = 1; end
-                if topy>size(test_im_croppad,1); topy = size(test_im_croppad,1); end
+                if topy>size(bin_n,1); topy = size(bin_n,1); end
                 locX = Xmesh(boty:topy,botx:topx);
                 locY = Ymesh(boty:topy,botx:topx);
                 R = zeros(size(locX));
@@ -657,9 +661,9 @@ for index = setnumber
         
         figure(101);imshow(final_n_poly);
         
-        imwrite(final_n_poly,[imwrite_dir name_dir '/' im_direc_1(imindex).name(1:end-4) '.jpg'],'quality',50);
+        imwrite(final_n_poly,[imwrite_dir name_dir '/' im_direc(imindex).name(1:end-4) '.jpg'],'quality',50);
         
-        dlmwrite([poswrite_dir name_dir '/' im_direc_1(imindex).name(1:end-4) '.txt'], ...
+        dlmwrite([poswrite_dir name_dir '/' im_direc(imindex).name(1:end-4) '.txt'], ...
             [[partcents_s, (size_small)*ones(length(partcents_s),1)]; [partcents_l, ...
             (size_large)*ones(length(partcents_l),1)]],'delimiter', ' ','Precision',9);
         
@@ -669,5 +673,5 @@ end
 %clean up
 warning('on','MATLAB:colon:nonIntegerIndex');
 clearvars
-close all
+%close all
 clc
