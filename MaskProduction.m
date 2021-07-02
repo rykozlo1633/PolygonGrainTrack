@@ -6,7 +6,7 @@ clearvars selfmask
 savemask_dir = 'ShapeMasks/';
 
 %Pick shape
-shape = 'Heptagon';
+shape = 'Pentagon';
 
 switch shape
     %All parameters below will depend on the mask you need given image resolution,
