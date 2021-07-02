@@ -10,7 +10,7 @@ poswrite_dir = 'Positions/';
 
 %Set and image numbers to consider
 startnum = 1;  endnum = startnum; %22000;
-setnumber= 2; %can be range
+setnumber= 1; %can be range %%%*******1 = Pentagon image, 2 = Disk image in this example.
 namesets = {'sample1','sample2'};
 shapesets = {'Pentagon','Circle'};
 
@@ -124,7 +124,11 @@ for index = setnumber
         %Find peaks in large polygon convolution
         if numsides>0
             %Polygons
-            while 1
+            while 1 %Could insert conditional: If number of grains is known, then
+                        %stop search once this number has been detected
+                        %(potentially within some error, using a threshold
+                        %of correlation peak)
+                        
                 [maxs,ymaxs] = max(test_xc2_poly);
                 [maxs2,xmaxs] = max(maxs);
                 [testmax,zmax] = max(maxs2);
@@ -137,7 +141,13 @@ for index = setnumber
                 
                 zmaxes = NaN(size(ex,3),1);
                 for number = 1:size(ex,3)
-                    zmaxes(number) = max(ex(:,:,number),[],'all');
+                    try
+                        zmaxes(number) = max(ex(:,:,number),[],'all');
+                    catch %Error if running earlier than R2018b
+                        szex = numel(ex(:,:,number));
+                        zmaxes(number) = max( reshape(ex(:,:,number),[szex,1]) );
+                    end
+                        
                 end
                 zmaxes_sm = smoothdata(zmaxes,'Gaussian',5);
                 %figure(1);plot(zmaxes_sm)
@@ -193,7 +203,10 @@ for index = setnumber
             fprintf('     Finished with large polygon convolution! \n')
         else
             
-            while 1
+            while 1 %Could insert conditional: If number of grains is known, then
+                        %stop search once this number has been detected
+                        %(potentially within some error, using a threshold
+                        %of correlation peak)
                 %Disks
                 
                 [maxs,ymaxs] = max(test_xc2);
@@ -365,7 +378,10 @@ for index = setnumber
         %Find peaks in small polygon convolution
         
         if numsides>0
-            while 1
+            while 1 %Could insert conditional: If number of grains is known, then
+                        %stop search once this number has been detected
+                        %(potentially within some error, using a threshold
+                        %of correlation peak)
                 
                 [maxs,ymaxs] = max(test_xc2_poly);
                 [maxs2,xmaxs] = max(maxs);
@@ -378,7 +394,12 @@ for index = setnumber
                 
                 zmaxes = NaN(size(ex,3),1);
                 for number = 1:size(ex,3)
-                    zmaxes(number) = max(ex(:,:,number),[],'all');
+                    try
+                        zmaxes(number) = max(ex(:,:,number),[],'all');
+                    catch %Error if running earlier than R2018b
+                        szex = numel(ex(:,:,number));
+                        zmaxes(number) = max( reshape(ex(:,:,number),[szex,1]) );
+                    end
                 end
                 zmaxes_sm = smoothdata(zmaxes,'Gaussian',5);
                 %figure(1);plot(zmaxes_sm)
@@ -435,7 +456,10 @@ for index = setnumber
             fprintf('     Finished with small polygon convolution! \n')
         else
             allmax = [];
-            while 1
+            while 1 %Could insert conditional: If number of grains is known, then
+                        %stop search once this number has been detected
+                        %(potentially within some error, using a threshold
+                        %of correlation peak)
                 %Disks
                 
                 [maxs,ymaxs] = max(test_xc2);
@@ -545,8 +569,8 @@ for index = setnumber
             end
         end
         
-        %Next step uses insertShape to draw, requires Computer Vision toolbox.
-        %could instead plot for the polygons, and viscircles for the disks, then print figure
+        %***Next step uses insertShape to draw, requires Computer Vision toolbox.
+        %***Alternative: use plot for the polygons, and viscircles or plot for the disks, then print figure
         if numsides>0
             final_n_poly = insertShape(uint8(cat(3,bin_n,bin_n,bin_n))*255, 'FilledPolygon', vertices,'opacity',0.5,'color',repmat([255,0,0],[size(vertices,1),1]));
             final_n_poly = insertShape(final_n_poly, 'FilledPolygon', vertices2,'opacity',0.5,'color',repmat([0,0,255],[size(vertices2,1),1]));
